@@ -433,6 +433,7 @@ export interface ExecutionLoggerService {
 
   completeWorkflowExecution(params: {
     executionId: string
+    workflowId: string | null
     endedAt: string
     totalDurationMs: number
 

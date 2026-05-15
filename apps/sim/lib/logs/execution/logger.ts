@@ -240,6 +240,7 @@ export class ExecutionLogger implements IExecutionLoggerService {
 
   async completeWorkflowExecution(params: {
     executionId: string
+    workflowId: string | null
     endedAt: string
     totalDurationMs: number
     costSummary: {
@@ -274,6 +275,7 @@ export class ExecutionLogger implements IExecutionLoggerService {
   }): Promise<WorkflowExecutionLog> {
     const {
       executionId,
+      workflowId,
       endedAt,
       totalDurationMs,
       costSummary,
@@ -371,12 +373,9 @@ export class ExecutionLogger implements IExecutionLoggerService {
       workflowInput,
     })
 
-    // Scope UPDATE by both executionId and workflowId. workflowId is nullable
-    // (set to NULL on workflow deletion), so use isNull() when workflowId is
-    // absent to avoid falling back to executionId-only scoping.
     const workflowIdWhere =
-      existingLog?.workflowId != null
-        ? eq(workflowExecutionLogs.workflowId, existingLog.workflowId)
+      workflowId != null
+        ? eq(workflowExecutionLogs.workflowId, workflowId)
         : isNull(workflowExecutionLogs.workflowId)
 
     const [updatedLog] = await db

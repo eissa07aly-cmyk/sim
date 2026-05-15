@@ -270,6 +270,7 @@ export class LoggingSession {
   }): Promise<void> {
     await executionLogger.completeWorkflowExecution({
       executionId: this.executionId,
+      workflowId: this.workflowId,
       endedAt: params.endedAt,
       totalDurationMs: params.totalDurationMs,
       costSummary: params.costSummary,
