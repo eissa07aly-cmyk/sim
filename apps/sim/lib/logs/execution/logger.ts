@@ -8,7 +8,7 @@ import {
 } from '@sim/db/schema'
 import { createLogger } from '@sim/logger'
 import { generateId } from '@sim/utils/id'
-import { and, eq, sql } from 'drizzle-orm'
+import { and, eq, isNull, sql } from 'drizzle-orm'
 import { BASE_EXECUTION_CHARGE } from '@/lib/billing/constants'
 import { getHighestPrioritySubscription } from '@/lib/billing/core/subscription'
 import {
@@ -371,12 +371,13 @@ export class ExecutionLogger implements IExecutionLoggerService {
       workflowInput,
     })
 
-    const updateWhere = existingLog?.workflowId
-      ? and(
-          eq(workflowExecutionLogs.executionId, executionId),
-          eq(workflowExecutionLogs.workflowId, existingLog.workflowId)
-        )
-      : eq(workflowExecutionLogs.executionId, executionId)
+    // Scope UPDATE by both executionId and workflowId. workflowId is nullable
+    // (set to NULL on workflow deletion), so use isNull() when workflowId is
+    // absent to avoid falling back to executionId-only scoping.
+    const workflowIdWhere =
+      existingLog?.workflowId != null
+        ? eq(workflowExecutionLogs.workflowId, existingLog.workflowId)
+        : isNull(workflowExecutionLogs.workflowId)
 
     const [updatedLog] = await db
       .update(workflowExecutionLogs)
@@ -389,7 +390,7 @@ export class ExecutionLogger implements IExecutionLoggerService {
         executionData: completedExecutionData,
         cost: executionCost,
       })
-      .where(updateWhere)
+      .where(and(eq(workflowExecutionLogs.executionId, executionId), workflowIdWhere))
       .returning()
 
     if (!updatedLog) {
