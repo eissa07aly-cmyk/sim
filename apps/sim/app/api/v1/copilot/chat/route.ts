@@ -104,6 +104,7 @@ export const POST = withRouteHandler(async (req: NextRequest) => {
       if (
         auth.keyType === 'workspace' &&
         auth.workspaceId &&
+        chat.workspaceId &&
         chat.workspaceId !== auth.workspaceId
       ) {
         return NextResponse.json(
