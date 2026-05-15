@@ -8,7 +8,7 @@ import {
 } from '@sim/db/schema'
 import { createLogger } from '@sim/logger'
 import { generateId } from '@sim/utils/id'
-import { eq, sql } from 'drizzle-orm'
+import { and, eq, sql } from 'drizzle-orm'
 import { BASE_EXECUTION_CHARGE } from '@/lib/billing/constants'
 import { getHighestPrioritySubscription } from '@/lib/billing/core/subscription'
 import {
@@ -371,6 +371,13 @@ export class ExecutionLogger implements IExecutionLoggerService {
       workflowInput,
     })
 
+    const updateWhere = existingLog?.workflowId
+      ? and(
+          eq(workflowExecutionLogs.executionId, executionId),
+          eq(workflowExecutionLogs.workflowId, existingLog.workflowId)
+        )
+      : eq(workflowExecutionLogs.executionId, executionId)
+
     const [updatedLog] = await db
       .update(workflowExecutionLogs)
       .set({
@@ -382,7 +389,7 @@ export class ExecutionLogger implements IExecutionLoggerService {
         executionData: completedExecutionData,
         cost: executionCost,
       })
-      .where(eq(workflowExecutionLogs.executionId, executionId))
+      .where(updateWhere)
       .returning()
 
     if (!updatedLog) {

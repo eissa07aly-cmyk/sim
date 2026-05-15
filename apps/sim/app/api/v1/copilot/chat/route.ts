@@ -4,6 +4,7 @@ import { generateId } from '@sim/utils/id'
 import { type NextRequest, NextResponse } from 'next/server'
 import { v1CopilotChatContract } from '@/lib/api/contracts/v1/copilot'
 import { getValidationErrorMessage, parseRequest } from '@/lib/api/server'
+import { getAccessibleCopilotChat } from '@/lib/copilot/chat/lifecycle'
 import { runHeadlessCopilotLifecycle } from '@/lib/copilot/request/lifecycle/headless'
 import { withRouteHandler } from '@/lib/core/utils/with-route-handler'
 import { getWorkflowById, resolveWorkflowIdForUser } from '@/lib/workflows/utils'
@@ -93,8 +94,27 @@ export const POST = withRouteHandler(async (req: NextRequest) => {
     const effectiveMode = parsed.mode === 'agent' ? 'build' : parsed.mode
     const transportMode = effectiveMode === 'build' ? 'agent' : effectiveMode
 
-    // Always generate a chatId - required for artifacts system to work with subagents
-    const chatId = parsed.chatId || generateId()
+    // Verify chatId ownership before use to prevent cross-tenant chat exfiltration.
+    let chatId: string
+    if (parsed.chatId) {
+      const chat = await getAccessibleCopilotChat(parsed.chatId, auth.userId)
+      if (!chat) {
+        return NextResponse.json({ success: false, error: 'Chat not found' }, { status: 404 })
+      }
+      if (
+        auth.keyType === 'workspace' &&
+        auth.workspaceId &&
+        chat.workspaceId !== auth.workspaceId
+      ) {
+        return NextResponse.json(
+          { success: false, error: 'API key is not authorized for this workspace' },
+          { status: 403 }
+        )
+      }
+      chatId = parsed.chatId
+    } else {
+      chatId = generateId()
+    }
 
     messageId = generateId()
     logger.info(

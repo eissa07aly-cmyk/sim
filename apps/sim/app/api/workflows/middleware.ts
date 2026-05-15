@@ -20,7 +20,8 @@ export interface ValidationResult {
 export async function validateWorkflowAccess(
   request: NextRequest,
   workflowId: string,
-  requireDeployment = true
+  requireDeployment = true,
+  action: 'read' | 'write' | 'admin' = 'read'
 ): Promise<ValidationResult> {
   try {
     const workflow = await getWorkflowById(workflowId)
@@ -66,7 +67,7 @@ export async function validateWorkflowAccess(
       const authorization = await authorizeWorkflowByWorkspacePermission({
         workflowId,
         userId: auth.userId,
-        action: 'read',
+        action,
       })
       if (!authorization.allowed) {
         return {
