@@ -23,8 +23,6 @@ export interface ResourceColumn {
   id: string
   header: string
   widthMultiplier?: number
-  /** Fixed pixel width. When set, the column is excluded from proportional sizing. */
-  widthPx?: number
 }
 
 export interface ResourceCell {
@@ -651,32 +649,26 @@ const ResourceColGroup = memo(function ResourceColGroup({
   columns,
   hasCheckbox,
 }: ResourceColGroupProps) {
-  const fixedPxTotal = columns.reduce((sum, col) => sum + (col.widthPx ?? 0), 0)
-  const flexibleWeights = columns.map((col, colIdx) =>
-    col.widthPx ? 0 : (colIdx === 0 ? 2.5 : 1.0) * (col.widthMultiplier ?? 1)
+  const weights = columns.map(
+    (col, colIdx) => (colIdx === 0 ? 2.5 : 1.0) * (col.widthMultiplier ?? 1)
   )
-  const flexibleTotal = flexibleWeights.reduce((s, w) => s + w, 0)
-  const reservedPx = fixedPxTotal + (hasCheckbox ? CHECKBOX_COLUMN_WIDTH_PX : 0)
+  const total = weights.reduce((s, w) => s + w, 0)
 
   return (
     <colgroup>
       {hasCheckbox && <col style={{ width: CHECKBOX_COLUMN_WIDTH }} />}
       {columns.map((col, colIdx) => {
-        if (col.widthPx) {
-          return <col key={col.id} style={{ width: `${col.widthPx}px` }} />
-        }
-        const columnRatio = flexibleTotal > 0 ? flexibleWeights[colIdx] / flexibleTotal : 0
+        const columnRatio = weights[colIdx] / total
         const columnPercent = columnRatio * 100
-        const reservedOffset = reservedPx * columnRatio
+        const checkboxOffset = CHECKBOX_COLUMN_WIDTH_PX * columnRatio
 
         return (
           <col
             key={col.id}
             style={{
-              width:
-                reservedOffset > 0
-                  ? `calc(${columnPercent}% - ${reservedOffset}px)`
-                  : `${columnPercent}%`,
+              width: hasCheckbox
+                ? `calc(${columnPercent}% - ${checkboxOffset}px)`
+                : `${columnPercent}%`,
             }}
           />
         )
